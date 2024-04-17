@@ -15,7 +15,7 @@ class Display:
         for i, rows in enumerate(self.frame_buffer):
             for j, cols in enumerate(rows):
                 
-                if self.frame_buffer[i][j] == 1:
+                if self.frame_buffer[i][j] == 0x1:
                     pygame.draw.rect(self.display, PIXEL_ON_COLOR, (j * PIXEL_SIZE, i * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE))
                 else:
                     pygame.draw.rect(self.display, PIXEL_OFF_COLOR, (j * PIXEL_SIZE, i * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE))
