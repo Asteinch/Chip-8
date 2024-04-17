@@ -1,0 +1,76 @@
+import pygame
+    
+class Chip8:
+
+    def __init__(self) -> None:
+        
+        self.mhz = 300
+
+        self.PC = 0x200
+
+        self.memory = [0x0] * 4096
+        self.registers = [0x0] * 16    
+        self.stack = [0x0] * 16
+
+        self.font = [0xF0, 0x90, 0x90, 0x90, 0xF0,
+                    0x20, 0x60, 0x20, 0x20, 0x70,
+                    0xF0, 0x10, 0xF0, 0x80, 0xF0,
+                    0xF0, 0x10, 0xF0, 0x10, 0xF0,
+                    0x90, 0x90, 0xF0, 0x10, 0x10,
+                    0xF0, 0x80, 0xF0, 0x10, 0xF0, 
+                    0xF0, 0x80, 0xF0, 0x90, 0xF0,
+                    0xF0, 0x10, 0x20, 0x40, 0x40, 
+                    0xF0, 0x90, 0xF0, 0x90, 0xF0,
+                    0xF0, 0x90, 0xF0, 0x10, 0xF0,
+                    0xF0, 0x90, 0xF0, 0x90, 0x90,
+                    0xE0, 0x90, 0xE0, 0x90, 0xE0, 
+                    0xF0, 0x80, 0x80, 0x80, 0xF0,
+                    0xE0, 0x90, 0x90, 0x90, 0xE0,
+                    0xF0, 0x80, 0xF0, 0x80, 0xF0,
+                    0xF0, 0x80, 0xF0, 0x80, 0x80]
+        
+        self.clock = pygame.time.Clock()
+
+        self.load_font_memory()
+        self.load_rom_memory()
+
+    
+    def load_rom_memory(self):
+
+        with open("rom.ch8", "rb") as file:
+            file_bytes = file.read()
+
+            for i, byte in enumerate(file_bytes, 0x200):
+                self.memory[i] = hex(byte)
+
+    def load_font_memory(self):
+
+        for i, byte in enumerate(self.font, 0x0):
+
+            self.memory[i] = byte
+
+
+    def cpu_tick(self):
+
+        self.clock.tick(self.mhz)
+    
+
+        if self.PC > 0xFFF:
+            self.PC = 0x200
+        
+
+        if (self.memory[self.PC] != 0x0 and self.memory[self.PC + 0x1] !=0x0):
+
+            print(self.memory[self.PC],":",self.memory[self.PC + 0x001])
+
+
+
+
+    
+
+
+
+
+
+
+    
