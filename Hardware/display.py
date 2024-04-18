@@ -8,14 +8,13 @@ class Display:
         
         self.display = pygame.display.set_mode((64 * PIXEL_SIZE, 32 * PIXEL_SIZE))
 
-        self.frame_buffer = [[0x0] * 64 for _ in range(32)]
 
-    def display_buffer(self):
+    def display_buffer(self, buffer):
 
-        for i, rows in enumerate(self.frame_buffer):
+        for i, rows in enumerate(buffer):
             for j, cols in enumerate(rows):
                 
-                if self.frame_buffer[i][j] == 0x1:
+                if buffer[i][j] == 0x1:
                     pygame.draw.rect(self.display, PIXEL_ON_COLOR, (j * PIXEL_SIZE, i * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE))
                 else:
                     pygame.draw.rect(self.display, PIXEL_OFF_COLOR, (j * PIXEL_SIZE, i * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE))
@@ -28,6 +27,5 @@ class Display:
 
                 exit()
 
-        self.display_buffer()
 
         pygame.display.update()
