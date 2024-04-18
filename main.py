@@ -28,12 +28,15 @@ class Main:
 
                 if event.type == self.EMU_CLOCK:
 
+                    self.display.display_buffer(self.chip8.frame_buffer)
                     self.chip8.refresh_timers()
                     self.display.update()
-                
+
                 if event.type == self.CPU_CLOCK:
 
-                    self.chip8.CPU_cycle()
+                    self.chip8.fetch_opcodes()
+                    self.chip8.execute_opcode()
+                    
 
                 self.clock.tick(MAX_CLOCK)
                 
