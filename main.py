@@ -17,6 +17,8 @@ class Main:
         pygame.time.set_timer(self.EMU_CLOCK, round((1/EMU_CLOCK_RATE)*1000))
         pygame.time.set_timer(self.CPU_CLOCK, round((1/CPU_CLOCK_RATE)*1000))
 
+        self.clock = pygame.time.Clock()
+
     def loop(self):
 
         while True:
@@ -32,6 +34,8 @@ class Main:
                 if event.type == self.CPU_CLOCK:
 
                     self.chip8.CPU_cycle()
+
+                self.clock.tick(MAX_CLOCK)
                 
             
 main = Main()
