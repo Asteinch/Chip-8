@@ -1,6 +1,8 @@
 from Hardware.chip8 import *
 from Hardware.display import *
 
+print(not 0)
+
 import pygame
 from pygame.locals import *
 
@@ -34,7 +36,7 @@ class Main:
 
                 if event.type == self.CPU_CLOCK:
 
-                    self.chip8.fetch_opcodes()
+                    self.chip8.fetch_opcode()
                     self.chip8.execute_opcode()
                     
 
