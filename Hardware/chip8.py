@@ -15,37 +15,30 @@ class Chip8:
         self.delay_timer = 0x3C
         self.sound_timer = 0x3C
 
-        self.end_of_rom_data = 0xFFF
-
         self.current_opcode = 0x0000
 
+        self.end_of_rom_data = 0xFFF
+
         self.font = [0xF0, 0x90, 0x90, 0x90, 0xF0,
-                0x20, 0x60, 0x20, 0x20, 0x70,
-                0xF0, 0x10, 0xF0, 0x80, 0xF0,
-                0xF0, 0x10, 0xF0, 0x10, 0xF0,
-                0x90, 0x90, 0xF0, 0x10, 0x10,
-                0xF0, 0x80, 0xF0, 0x10, 0xF0, 
-                0xF0, 0x80, 0xF0, 0x90, 0xF0,
-                0xF0, 0x10, 0x20, 0x40, 0x40, 
-                0xF0, 0x90, 0xF0, 0x90, 0xF0,
-                0xF0, 0x90, 0xF0, 0x10, 0xF0,
-                0xF0, 0x90, 0xF0, 0x90, 0x90,
-                0xE0, 0x90, 0xE0, 0x90, 0xE0, 
-                0xF0, 0x80, 0x80, 0x80, 0xF0,
-                0xE0, 0x90, 0x90, 0x90, 0xE0,
-                0xF0, 0x80, 0xF0, 0x80, 0xF0,
-                0xF0, 0x80, 0xF0, 0x80, 0x80]
+                    0x20, 0x60, 0x20, 0x20, 0x70,
+                    0xF0, 0x10, 0xF0, 0x80, 0xF0,
+                    0xF0, 0x10, 0xF0, 0x10, 0xF0,
+                    0x90, 0x90, 0xF0, 0x10, 0x10,
+                    0xF0, 0x80, 0xF0, 0x10, 0xF0, 
+                    0xF0, 0x80, 0xF0, 0x90, 0xF0,
+                    0xF0, 0x10, 0x20, 0x40, 0x40, 
+                    0xF0, 0x90, 0xF0, 0x90, 0xF0,
+                    0xF0, 0x90, 0xF0, 0x10, 0xF0,
+                    0xF0, 0x90, 0xF0, 0x90, 0x90,
+                    0xE0, 0x90, 0xE0, 0x90, 0xE0, 
+                    0xF0, 0x80, 0x80, 0x80, 0xF0,
+                    0xE0, 0x90, 0x90, 0x90, 0xE0,
+                    0xF0, 0x80, 0xF0, 0x80, 0xF0,
+                    0xF0, 0x80, 0xF0, 0x80, 0x80]
         
         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
         
-
-        self.clock = pygame.time.Clock()
         self.load_essentials()
-
-        self.start_time = time.time()
-
-    def get_screen(self, buffer):
-        self.frame_buffer = buffer
 
     
     def load_essentials(self):
@@ -54,7 +47,7 @@ class Chip8:
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
-                self.memory[i] = hex(byte)
+                self.memory[i] = byte
             
             self.end_of_rom_data = i
 
@@ -64,135 +57,105 @@ class Chip8:
             self.memory[i] = byte
         
 
-    def fetch_opcodes(self):
+    def fetch_opcode(self):
 
-        if self.PC > self.end_of_rom_data: # Increments the Program Counter by 2 if under 0xFFF
+        if self.PC > self.end_of_rom_data: # Resets program counter if it reached the end of rom
             self.PC = 0x200
 
-        first_nibble = int(self.memory[self.PC], 16)   
-        second_nibble = int(self.memory[self.PC+0x1], 16)
+        first_nibble = self.memory[self.PC] 
+        second_nibble = self.memory[self.PC+0x1]
 
-        opcode = (first_nibble << 8) | second_nibble # Merges the two bytes to one
+        self.current_opcode = (first_nibble << 8) | second_nibble # Merges the two bytes to one
 
         self.PC += 0x2
 
-        self.current_opcode = hex(opcode)
-
-  
     
     def execute_opcode(self):
 
-        opcode = int(self.current_opcode, 16)
+        opcode = self.current_opcode
 
-        nibble_1 = (opcode & 0xF000) >> 12
-        nibble_2 = (opcode & 0x0F00) >> 8
-        nibble_3 = (opcode & 0x00F0) >> 4
-        nibble_4 = (opcode & 0x000F)
+        n1 = (opcode & 0xF000) >> 12
+        n2 = (opcode & 0x0F00) >> 8
+        n3 = (opcode & 0x00F0) >> 4
+        n4 = (opcode & 0x000F)
 
-
-        print(nibble_1, nibble_2, nibble_3, nibble_4)
-
-        match nibble_1:
-
-            case 0xA:
-
-                self.I = (nibble_2) << 8 | (nibble_3 << 4) | nibble_4
-            
-            case 0xC:
-
-                rnd = random.randint(0, 255)
-                kk = (nibble_3 << 4) | nibble_4
-
-    
-
-                self.V[nibble_2] = (rnd & kk)
-
-            case 0x3:
-
-                kk = (nibble_3 << 4) | nibble_4
-
-                if kk == self.V[nibble_2]:
-                    self.PC += 0x2
-                
-            case 0xD: # Horror
-
-                x = (nibble_2 << 8) % 64
-                y = (nibble_3 << 4) % 32
-
-                self.V[0xF] = 0
-
-                for i in range(0, nibble_4):
-
-                    sprite_data = self.memory[self.I + i]
-                    sprite_data = int(sprite_data, 16)
-                    
-
-                    for b in range(0, 8):
-
-                        current_pixel = (sprite_data >> b) & 1
-
-                        if (current_pixel == 1 and self.frame_buffer[y][x] == 1):
-
-                            self.frame_buffer[y][x] = 0
-                            self.V[0xF] = 1
-
-                        elif ( current_pixel == 1 and self.frame_buffer[y][x] == 0):
-
-                            self.frame_buffer[y][x] = 1
-
-                        if x == 64:
-                            break
-                        x += 1
-
-                    y += 1
-                    if y == 32:
-                        break
-
-            case 0x7:
-
-                self.V[nibble_2] += (nibble_3 << 4) | nibble_4
+        match n1:
 
             case 0x1:
+                # 0x1nnn: sets program counter to nnn
 
-                self.PC = (nibble_2) << 8 | (nibble_3 << 4) | nibble_4
-
-            case 0x6:
-
-                self.V[nibble_2] = (nibble_3 << 4) | nibble_4
-
-            case 0x8:
-
-                self.V[nibble_2] = self.V[nibble_3]
+                self.PC = (n2) << 8 | (n3 << 4) | n4
 
             case 0x2:
+                # 0x2nnn: adds program counter to stack and sets program coutner to nnn
 
                 self.stack.insert(0, self.PC)
 
-                self.PC = (nibble_2) << 8 | (nibble_3 << 4) | nibble_4
+                self.PC = (n2) << 8 | (n3 << 4) | n4
 
- 
+            case 0x3:
+                # 0x3xkk: increments program counter if kk and v[x] match
+
+                kk = (n3 << 4) | n4
+
+                if kk == self.V[n2]:
+                    self.PC += 0x2
+        
+            case 0x6:
+                # 0x6xkk: sets v[x] to kk
+
+                self.V[n2] = (n3 << 4) | n4
+
+            case 0x7:
+                # 0x8xkk: increments v[x] with kk
+
+                self.V[n2] += (n3 << 4) | n4
+
+            case 0x8:
+                # 0x8xy0: sets v[x] to v[y]
+
+                self.V[n2] = self.V[n3]
+          
+            case 0xA:
+                # 0xAnnn: sets I to nnn
+
+                self.I = (n2) << 8 | (n3 << 4) | n4
+            
+            case 0xC:
+                # 0xCxkk: ANDs kk and rnd(0, 255) and stores in v[x]
+
+                rnd = random.randint(0, 255)
+                kk = (n3 << 4) | n4
+
+                self.V[n2] = (rnd & kk)
 
 
+            case 0xD: # Horror
+                # 0xDxyn: draws n tall sprite at x=v[x], y=v[y]
+
+                x_pos = self.V[n2]
+                y_pos = self.V[n3]
+
+                self.V[0xF] = 0
+
+                for y in range(0, n4):
+
+                    pixel_byte = self.memory[self.I + y]
+
+                    for x in range(0, 8):
+
+                        pixel_bit = pixel_byte & (0b10000000 >> x)
+
+                        if pixel_bit != 0:
+
+                            if self.frame_buffer[y_pos+y][x_pos+x] == 1:
+
+                                self.V[0xF] = 1
+                            
+                            self.frame_buffer[y_pos+y][x_pos+x] = not self.frame_buffer[y_pos+y][x_pos+x]
+         
 
 
-
-                        
-
-                        
-
-                        
-
-
-
-
-
-
-
-
-
-
-
-    
     def refresh_timers(self):
 
         if self.delay_timer > 0:
@@ -200,10 +163,3 @@ class Chip8:
 
         if self.sound_timer > 0:
             self.sound_timer -= 1
-
-
-
-
-
-
-    
