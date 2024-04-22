@@ -81,6 +81,16 @@ class Chip8:
 
         match n1:
 
+            case 0x0:
+                match n1 >> 12 | n2 >> 8 | n3 >> 4 | n4:
+
+                    case 0x00E0:
+                        self.frame_buffer = [[0x0] * 64 for _ in range(32)]
+
+                    case 0x00EE:
+                        self.PC = self.stack[0]
+                        self.stack.pop(0)
+
             case 0x1:
                 # 0x1nnn: sets program counter to nnn
 
@@ -100,7 +110,21 @@ class Chip8:
 
                 if kk == self.V[n2]:
                     self.PC += 0x2
-        
+
+            case 0x4:
+                # 0x4xkk: increments program counter if kk and v[x] DONT match
+
+                kk = (n3 << 4) | n4       
+
+                if kk != self.V[n2]:
+                    self.PC += 0x2
+            
+            case 0x5:
+                # 5xy0: increments program counter if v[x] and v[y] match
+
+                if self.V[n2] == self.V[n3]:
+                    self.PC += 0x2
+
             case 0x6:
                 # 0x6xkk: sets v[x] to kk
 
@@ -112,10 +136,71 @@ class Chip8:
                 self.V[n2] += (n3 << 4) | n4
 
             case 0x8:
-                # 0x8xy0: sets v[x] to v[y]
 
-                self.V[n2] = self.V[n3]
-          
+                match n4:
+
+                    case 0x0:
+                        # 0x8xy0: sets v[x] to v[y]
+
+                        self.V[n2] = self.V[n3]
+
+                    case 0x1:
+                        # 0x8xy1: ORs v[x] and v[y]
+
+                        self.V[n1] |= self.V[n2]
+
+                    case 0x2:
+                        # 0x8xy2: ANDs v[x] and v[y]
+
+                        self.V[n1] &= self.V[n2]
+                    
+                    case 0x3:
+                        # 0x8xy3: XORs v[x] and v[y]
+
+                        self.V[n1] ^= self.V[n2]
+
+                    case 0x4:
+                        # 0x8xy4: if v[x] + v[y] > 255, v[f] wil be set to 1 and last 8 bits of v[x] + v[y] will be stored in v[x], else v[f] = 0
+
+                        xy = self.V[n2] + self.V[n3]
+                        if xy < 255:
+                            self.V[0xF] = 1
+
+                            self.V[n2] = xy & ((1 << 8)) - 1
+
+                        self.V[0xF] = 0
+
+                    case 0x5:
+                        # 0x8xy5: sets v[f] to 1 if v[x] > v[y] else 0. stores v[x] - v[y] in v[x]
+
+                        self.V[0xF] = 1 if self.V[n2] > self.V[n3] else 0
+
+                        self.V[n2] -= self.V[n3]
+
+                    case 0x6:
+                        # 0x8xy6: sets v[f] to least-significant in v[x] and divides v[x] by 2
+
+                        least_bit = (self.V[n2] >> 1) << 1 
+                        least_bit ^= self.V[x]
+
+                        self.V[0xF] = 1 if least_bit == 1 else 0
+
+                        self.V[x] /= 2
+
+                    case 0x7:
+                        # 0x8xy7: sets v[f] to 1 if v[y] > v[x] else 0. stores v[y] - v[x] in v[x]
+
+                        self.V[0xF] = 1 if self.V[n3] > self.V[n2] else 0
+
+                        self.V[n2] = self.V[n3] - self.V[n2]
+                    
+                    case 0xE:
+                        # 0x8xyE: sets v[f] to most-significant in v[x] and multiplies v[x] by 2
+
+                        self.V[0xF] = 1 if self.V[n2] > 0 else 0
+
+                        self.V[n2] *= 2
+
             case 0xA:
                 # 0xAnnn: sets I to nnn
 
@@ -133,8 +218,8 @@ class Chip8:
             case 0xD: # Horror
                 # 0xDxyn: draws n tall sprite at x=v[x], y=v[y]
 
-                x_pos = self.V[n2]
-                y_pos = self.V[n3]
+                x_pos = self.V[n2]%64
+                y_pos = self.V[n3]%32
 
                 self.V[0xF] = 0
 
@@ -148,12 +233,11 @@ class Chip8:
 
                         if pixel_bit != 0:
 
-                            if self.frame_buffer[y_pos+y][x_pos+x] == 1:
+                            if self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] == 1:
 
                                 self.V[0xF] = 1
                             
-                            self.frame_buffer[y_pos+y][x_pos+x] = not self.frame_buffer[y_pos+y][x_pos+x]
-         
+                            self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] = not self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] 
 
 
     def refresh_timers(self):
