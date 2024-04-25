@@ -1,4 +1,7 @@
 import pygame,time, random
+
+from Hardware.keypad import Keypad
+from constants import *
     
 class Chip8:
 
@@ -15,35 +18,21 @@ class Chip8:
         self.delay_timer = 0x3C
         self.sound_timer = 0x3C
 
+        self.key_pad = Keypad()
+
         self.current_opcode = 0x0000
 
         self.end_of_rom_data = 0xFFF
 
-        self.font = [0xF0, 0x90, 0x90, 0x90, 0xF0,
-                    0x20, 0x60, 0x20, 0x20, 0x70,
-                    0xF0, 0x10, 0xF0, 0x80, 0xF0,
-                    0xF0, 0x10, 0xF0, 0x10, 0xF0,
-                    0x90, 0x90, 0xF0, 0x10, 0x10,
-                    0xF0, 0x80, 0xF0, 0x10, 0xF0, 
-                    0xF0, 0x80, 0xF0, 0x90, 0xF0,
-                    0xF0, 0x10, 0x20, 0x40, 0x40, 
-                    0xF0, 0x90, 0xF0, 0x90, 0xF0,
-                    0xF0, 0x90, 0xF0, 0x10, 0xF0,
-                    0xF0, 0x90, 0xF0, 0x90, 0x90,
-                    0xE0, 0x90, 0xE0, 0x90, 0xE0, 
-                    0xF0, 0x80, 0x80, 0x80, 0xF0,
-                    0xE0, 0x90, 0x90, 0x90, 0xE0,
-                    0xF0, 0x80, 0xF0, 0x80, 0xF0,
-                    0xF0, 0x80, 0xF0, 0x80, 0x80]
+        self.font = FONT
         
         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
         
         self.load_essentials()
-
     
     def load_essentials(self):
 
-        with open("rom.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        with open("Roms/opcode.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
@@ -82,7 +71,7 @@ class Chip8:
         match n1:
 
             case 0x0:
-                match n1 >> 12 | n2 >> 8 | n3 >> 4 | n4:
+                match (n1 << 12) |( n2 << 8) | (n3 << 4) | n4:
 
                     case 0x00E0:
                         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
@@ -98,6 +87,7 @@ class Chip8:
 
             case 0x2:
                 # 0x2nnn: adds program counter to stack and sets program coutner to nnn
+
 
                 self.stack.insert(0, self.PC)
 
@@ -131,7 +121,7 @@ class Chip8:
                 self.V[n2] = (n3 << 4) | n4
 
             case 0x7:
-                # 0x8xkk: increments v[x] with kk
+                # 0x7xkk: increments v[x] with kk
 
                 self.V[n2] += (n3 << 4) | n4
 
@@ -147,28 +137,27 @@ class Chip8:
                     case 0x1:
                         # 0x8xy1: ORs v[x] and v[y]
 
-                        self.V[n1] |= self.V[n2]
+                        self.V[n2] |= self.V[n3]
 
                     case 0x2:
                         # 0x8xy2: ANDs v[x] and v[y]
 
-                        self.V[n1] &= self.V[n2]
+                        self.V[n2] &= self.V[n3]
                     
                     case 0x3:
                         # 0x8xy3: XORs v[x] and v[y]
 
-                        self.V[n1] ^= self.V[n2]
+                        self.V[n2] ^= self.V[n3]
 
                     case 0x4:
                         # 0x8xy4: if v[x] + v[y] > 255, v[f] wil be set to 1 and last 8 bits of v[x] + v[y] will be stored in v[x], else v[f] = 0
 
                         xy = self.V[n2] + self.V[n3]
-                        if xy < 255:
+                        if xy > 255:
                             self.V[0xF] = 1
 
-                            self.V[n2] = xy & ((1 << 8)) - 1
-
                         self.V[0xF] = 0
+                        self.V[n2] = xy
 
                     case 0x5:
                         # 0x8xy5: sets v[f] to 1 if v[x] > v[y] else 0. stores v[x] - v[y] in v[x]
@@ -180,12 +169,12 @@ class Chip8:
                     case 0x6:
                         # 0x8xy6: sets v[f] to least-significant in v[x] and divides v[x] by 2
 
-                        least_bit = (self.V[n2] >> 1) << 1 
-                        least_bit ^= self.V[x]
+                        least_significant_bit = self.V[n2] & 1
 
-                        self.V[0xF] = 1 if least_bit == 1 else 0
+                        self.V[0xF] = least_significant_bit
 
-                        self.V[x] /= 2
+                        self.V[n2] /= 2
+                                                    
 
                     case 0x7:
                         # 0x8xy7: sets v[f] to 1 if v[y] > v[x] else 0. stores v[y] - v[x] in v[x]
@@ -197,14 +186,34 @@ class Chip8:
                     case 0xE:
                         # 0x8xyE: sets v[f] to most-significant in v[x] and multiplies v[x] by 2
 
-                        self.V[0xF] = 1 if self.V[n2] > 0 else 0
+                        most_significant_bit = (self.V[n2] >> (len(bin(self.V[n2])) - 2)) & 1
+
+
+                        self.V[0xF] = most_significant_bit
 
                         self.V[n2] *= 2
+
+                        
+            case 0x9:
+                # 0x9xy0: increments program counter if v[x] and v[y] dont match
+
+                if self.V[n2] != self.V[n3]:
+                    self.PC += 0x2
+
 
             case 0xA:
                 # 0xAnnn: sets I to nnn
 
-                self.I = (n2) << 8 | (n3 << 4) | n4
+                self.I = (n2 << 8) | (n3 << 4) | n4
+
+            case 0xB:
+                # 0xBnnn: sets program counter to nnn plus v[0]
+
+                nnn = (n2 << 8) | (n3 << 4) | n4
+
+                self.PC = nnn + self.V[0x0]
+
+
             
             case 0xC:
                 # 0xCxkk: ANDs kk and rnd(0, 255) and stores in v[x]
@@ -239,7 +248,75 @@ class Chip8:
                             
                             self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] = not self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] 
 
+            case 0xE:
 
+                match (n3 >> 2) | n4:
+
+                    case 0x9E:
+                        if self.key_pad.keys[self.v[n2]] == 1:
+
+                            self.PC += 0x2
+
+                    case 0xA1:
+
+                        if self.key_pad.keys[self.v[n2]] != 1:
+
+                            self.PC += 0x2
+
+            case 0xF:
+
+                match (n3 >> 2) | 4:
+
+                    case 0x07:
+
+                        self.V[n2] = self.delay_timer
+
+                    case 0x0A:
+                        
+                        key_been_pressed = False
+
+                        while not key_been_pressed:
+
+                            for i, key in enumerate(self.key_pad):
+
+                                if key == 1:
+                                    key_been_pressed = True
+                                    break
+                        
+                        self.V[n2] = i
+
+                    case 0x15:
+
+                        self.delay_timer = self.V[n2]
+
+                    case 0x18:
+
+                        self.sound_timer = self.V[n2]
+
+                    case 0x1E:
+
+                        self.I += self.V[n2]
+
+                    case 0x29:
+
+                        for i, hex in enumerate(self.memory, 0x0):
+                            if self.V[n2] == self.memory[i]:
+                                self.I = i
+                                break
+                    case 0x55:
+
+                        for i in range(n2 + 1):
+
+                            self.memory[self.I + i - 1] = self.V[i - 1]
+
+                    case 0x65:
+
+                        for i in range(n2 + 1):
+
+                            self.memory[i - 1] = self.I[ - 1]
+                            
+
+                     
     def refresh_timers(self):
 
         if self.delay_timer > 0:
