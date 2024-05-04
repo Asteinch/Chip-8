@@ -1,4 +1,5 @@
 import pygame,time, random, math
+pygame.mixer.init()
 
 from Hardware.keypad import Keypad
 from constants import *
@@ -18,6 +19,8 @@ class Chip8:
         self.delay_timer = 0x3C
         self.sound_timer = 0x3C
 
+        self.beep = pygame.mixer.Sound("beep.wav")
+
         self.key_pad = Keypad()
 
         self.current_opcode = 0x0000
@@ -32,7 +35,7 @@ class Chip8:
     
     def load_essentials(self):
 
-        with open("Roms/opcode.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        with open("Roms/tetris.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
@@ -79,7 +82,6 @@ class Chip8:
                     case 0x00EE:
                         self.PC = self.stack.pop(0)
 
-
             case 0x1:
                 # 0x1nnn: sets program counter to nnn
 
@@ -89,10 +91,10 @@ class Chip8:
             case 0x2:
                 # 0x2nnn: adds program counter to stack and sets program coutner to nnn
 
-
                 self.stack.insert(0, self.PC)
 
-                self.PC = (n2) << 8 | (n3 << 4) | n4
+                nnn = (n2) << 8 | (n3 << 4) | n4
+                self.PC = nnn
 
             case 0x3:
                 # 0x3xkk: increments program counter if kk and v[x] match
@@ -104,7 +106,6 @@ class Chip8:
 
             case 0x4:
                 # 0x4xkk: increments program counter if kk and v[x] DONT match
-
 
                 kk = (n3 << 4) | n4   
 
@@ -175,9 +176,9 @@ class Chip8:
                     case 0x6:
                         # 0x8xy6: sets v[f] to least-significant in v[x] and divides v[x] by 2
 
-                        least_significant_bit = self.V[n2] & 1
+                        lst = self.V[n2] & 1
 
-                        self.V[0xF] = least_significant_bit
+                        self.V[0xF] = lst
 
                         self.V[n2] /= 2
                         self.V[n2] = math.floor(self.V[n2])
@@ -203,16 +204,10 @@ class Chip8:
 
                         msb = 1 if msb else 0
                     
-
-
                         self.V[0xF] = msb
 
                         self.V[n2] *= 2
                         self.V[n2] %= 256     
-
-                        print(msb)
-                        
-
                         
             case 0x9:
                 # 0x9xy0: increments program counter if v[x] and v[y] dont match
@@ -235,8 +230,6 @@ class Chip8:
 
                 self.PC = nnn + self.V[0x0]
 
-
-            
             case 0xC:
                 # 0xCxkk: ANDs kk and rnd(0, 255) and stores in v[x]
 
@@ -244,7 +237,6 @@ class Chip8:
                 kk = (n3 << 4) | n4
 
                 self.V[n2] = (rnd & kk)
-
 
             case 0xD: # Horror
                 # 0xDxyn: draws n tall sprite at x=v[x], y=v[y]
@@ -272,16 +264,21 @@ class Chip8:
 
             case 0xE:
 
-                match (n3 >> 4) | n4:
+                match (n3 << 4) | n4:
 
                     case 0x9E:
-                        if self.key_pad.keys[self.v[n2]] == 1:
+
+                        #0xEx9E: increments progranm counter if key at v[x] is pressed
+
+                        if self.key_pad.keys[self.V[n2]] == 1:
 
                             self.PC += 0x2
 
                     case 0xA1:
 
-                        if self.key_pad.keys[self.v[n2]] != 1:
+                        #0xExA1: increments progranm counter if key at v[x] is not pressed
+
+                        if self.key_pad.keys[self.V[n2]] != 1:
 
                             self.PC += 0x2
 
@@ -290,37 +287,50 @@ class Chip8:
                 match (n3 << 4) | n4:
 
                     case 0x07:
+                        # 0xFx07: sets v[x] to the value in delay timer
 
                         self.V[n2] = self.delay_timer
 
                     case 0x0A:
-                        
+                        # 0xFx0A: waits for key to be pressed, sets v[x] to the index of that key
+
                         key_been_pressed = False
 
                         while not key_been_pressed:
 
-                            for i, key in enumerate(self.key_pad.keys):
+                            for event in pygame.event.get():
+                                if event.type == pygame.QUIT:
+                                    exit()
+                                
+                                self.key_pad.get_all_pressed()
 
-                                if key == 1:
-                                    key_been_pressed = True
-                                    break
-                        
+                                for i, key in enumerate(self.key_pad.keys):
+
+                                    if key == 1:
+                                        key_been_pressed = True
+                                        break
+
                         self.V[n2] = i
 
+
+
                     case 0x15:
+                        # 0xFx15: sets delay timer to v[x]
 
                         self.delay_timer = self.V[n2]
 
                     case 0x18:
-
+                        # 0xFx18: sets sound timer to v[x]
                         self.sound_timer = self.V[n2]
 
                     case 0x1E:
+                        # 0xFx1E: increments I with v[x] and sets flag to one if overflow, else 0
 
                         self.I += self.V[n2]
                         self.V[0xF] = 1 if self.I > 0x0FF else 0
 
                     case 0x29:
+                        # 0xFx29: sets I to the location of the hex sprite with value v[x] in memory
 
                         for i in range(0x1FF):
 
@@ -329,6 +339,7 @@ class Chip8:
                                 break
 
                     case 0x33:
+                        # 0xFx33: split v[x] digits and adds them to memory starting from I. example: 126 -> 1, 2, 6
 
                         number = self.V[n2]
                         string_of_number = str(number)
@@ -339,12 +350,14 @@ class Chip8:
 
 
                     case 0x55:
+                        # 0xFx55: adds register v[0] -> v[x] to memory startng from adress I
 
                         for i in range(0, n2 + 1):
 
                             self.memory[self.I + i] = self.V[i]
 
                     case 0x65:
+                        # 0xfx65: adds values form memory starting at I to v[0] -> v[x]
 
                         for i in range(0, n2 + 1):
 
@@ -359,3 +372,4 @@ class Chip8:
 
         if self.sound_timer > 0:
             self.sound_timer -= 1
+            self.beep.play()
