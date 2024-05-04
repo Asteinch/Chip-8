@@ -1,4 +1,4 @@
-import pygame,time, random
+import pygame,time, random, math
 
 from Hardware.keypad import Keypad
 from constants import *
@@ -77,13 +77,14 @@ class Chip8:
                         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
 
                     case 0x00EE:
-                        self.PC = self.stack[0]
-                        self.stack.pop(0)
+                        self.PC = self.stack.pop(0)
+
 
             case 0x1:
                 # 0x1nnn: sets program counter to nnn
 
-                self.PC = (n2) << 8 | (n3 << 4) | n4
+                nnn = (n2) << 8 | (n3 << 4) | n4
+                self.PC = nnn
 
             case 0x2:
                 # 0x2nnn: adds program counter to stack and sets program coutner to nnn
@@ -104,7 +105,8 @@ class Chip8:
             case 0x4:
                 # 0x4xkk: increments program counter if kk and v[x] DONT match
 
-                kk = (n3 << 4) | n4       
+
+                kk = (n3 << 4) | n4   
 
                 if kk != self.V[n2]:
                     self.PC += 0x2
@@ -118,12 +120,17 @@ class Chip8:
             case 0x6:
                 # 0x6xkk: sets v[x] to kk
 
-                self.V[n2] = (n3 << 4) | n4
+                kk = (n3 << 4) | n4
+
+                self.V[n2] = kk
 
             case 0x7:
                 # 0x7xkk: increments v[x] with kk
 
-                self.V[n2] += (n3 << 4) | n4
+                kk = (n3 << 4) | n4
+
+                self.V[n2] += kk
+                self.V[n2] %= 256
 
             case 0x8:
 
@@ -152,12 +159,10 @@ class Chip8:
                     case 0x4:
                         # 0x8xy4: if v[x] + v[y] > 255, v[f] wil be set to 1 and last 8 bits of v[x] + v[y] will be stored in v[x], else v[f] = 0
 
-                        xy = self.V[n2] + self.V[n3]
-                        if xy > 255:
-                            self.V[0xF] = 1
+                        self.V[0xF] = 1 if self.V[n2] + self.V[n3] > 0xFF else 0
 
-                        self.V[0xF] = 0
-                        self.V[n2] = xy
+                        self.V[n2] += self.V[n3]
+                        self.V[n2] %= 256
 
                     case 0x5:
                         # 0x8xy5: sets v[f] to 1 if v[x] > v[y] else 0. stores v[x] - v[y] in v[x]
@@ -165,6 +170,7 @@ class Chip8:
                         self.V[0xF] = 1 if self.V[n2] > self.V[n3] else 0
 
                         self.V[n2] -= self.V[n3]
+                        self.V[n2] %= 256                       
 
                     case 0x6:
                         # 0x8xy6: sets v[f] to least-significant in v[x] and divides v[x] by 2
@@ -174,7 +180,8 @@ class Chip8:
                         self.V[0xF] = least_significant_bit
 
                         self.V[n2] /= 2
-                                                    
+                        self.V[n2] = math.floor(self.V[n2])
+                        self.V[n2] %= 256                                                          
 
                     case 0x7:
                         # 0x8xy7: sets v[f] to 1 if v[y] > v[x] else 0. stores v[y] - v[x] in v[x]
@@ -182,16 +189,29 @@ class Chip8:
                         self.V[0xF] = 1 if self.V[n3] > self.V[n2] else 0
 
                         self.V[n2] = self.V[n3] - self.V[n2]
+                        self.V[n2] %= 256        
                     
                     case 0xE:
                         # 0x8xyE: sets v[f] to most-significant in v[x] and multiplies v[x] by 2
 
-                        most_significant_bit = (self.V[n2] >> (len(bin(self.V[n2])) - 2)) & 1
+                        msb = self.V[n2]
+
+                        while msb > 0b11111111:  # Ensure it's an 8-bit number
+                            msb >>= 1
+
+                        msb &= 0b10000000
+
+                        msb = 1 if msb else 0
+                    
 
 
-                        self.V[0xF] = most_significant_bit
+                        self.V[0xF] = msb
 
                         self.V[n2] *= 2
+                        self.V[n2] %= 256     
+
+                        print(msb)
+                        
 
                         
             case 0x9:
@@ -204,7 +224,9 @@ class Chip8:
             case 0xA:
                 # 0xAnnn: sets I to nnn
 
-                self.I = (n2 << 8) | (n3 << 4) | n4
+                nnn = (n2 << 8) | (n3 << 4) | n4
+
+                self.I = nnn
 
             case 0xB:
                 # 0xBnnn: sets program counter to nnn plus v[0]
@@ -250,7 +272,7 @@ class Chip8:
 
             case 0xE:
 
-                match (n3 >> 2) | n4:
+                match (n3 >> 4) | n4:
 
                     case 0x9E:
                         if self.key_pad.keys[self.v[n2]] == 1:
@@ -265,7 +287,7 @@ class Chip8:
 
             case 0xF:
 
-                match (n3 >> 2) | 4:
+                match (n3 << 4) | n4:
 
                     case 0x07:
 
@@ -277,7 +299,7 @@ class Chip8:
 
                         while not key_been_pressed:
 
-                            for i, key in enumerate(self.key_pad):
+                            for i, key in enumerate(self.key_pad.keys):
 
                                 if key == 1:
                                     key_been_pressed = True
@@ -296,27 +318,40 @@ class Chip8:
                     case 0x1E:
 
                         self.I += self.V[n2]
+                        self.V[0xF] = 1 if self.I > 0x0FF else 0
 
                     case 0x29:
 
-                        for i, hex in enumerate(self.memory, 0x0):
-                            if self.V[n2] == self.memory[i]:
+                        for i in range(0x1FF):
+
+                            if self.memory[i] == self.V[n2]:
                                 self.I = i
                                 break
+
+                    case 0x33:
+
+                        number = self.V[n2]
+                        string_of_number = str(number)
+
+                        for i, digit in enumerate(string_of_number):
+
+                            self.memory[self.I+i] = int(digit)
+
+
                     case 0x55:
 
-                        for i in range(n2 + 1):
+                        for i in range(0, n2 + 1):
 
-                            self.memory[self.I + i - 1] = self.V[i - 1]
+                            self.memory[self.I + i] = self.V[i]
 
                     case 0x65:
 
-                        for i in range(n2 + 1):
+                        for i in range(0, n2 + 1):
 
-                            self.memory[i - 1] = self.I[ - 1]
+                            self.V[i] = self.memory[self.I + i]
+
                             
-
-                     
+         
     def refresh_timers(self):
 
         if self.delay_timer > 0:
