@@ -30,6 +30,7 @@ class Main:
 
                 if event.type == self.EMU_CLOCK:
 
+                    self.chip8.key_pad.get_all_pressed()
                     self.display.display_buffer(self.chip8.frame_buffer)
                     self.chip8.refresh_timers()
                     self.display.update()
