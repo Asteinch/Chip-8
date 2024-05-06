@@ -35,7 +35,7 @@ class Chip8:
     
     def load_essentials(self):
 
-        with open("Roms/tetris.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        with open("Roms/ufo.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
@@ -332,11 +332,7 @@ class Chip8:
                     case 0x29:
                         # 0xFx29: sets I to the location of the hex sprite with value v[x] in memory
 
-                        for i in range(0x1FF):
-
-                            if self.memory[i] == self.V[n2]:
-                                self.I = i
-                                break
+                        self.I = self.V[n2] * 5
 
                     case 0x33:
                         # 0xFx33: split v[x] digits and adds them to memory starting from I. example: 126 -> 1, 2, 6
