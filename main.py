@@ -1,7 +1,5 @@
-from Hardware.chip8 import *
-from Hardware.display import *
-
-print(not 0)
+from src.chip8 import *
+from src.display import *
 
 import pygame
 from pygame.locals import *
@@ -12,6 +10,8 @@ class Main:
         
         self.chip8 = Chip8()
         self.display = Display()
+
+        self.debug = False
 
         self.EMU_CLOCK = USEREVENT + 1 # 60 Hz. for the timers and display
         self.CPU_CLOCK = USEREVENT + 2 # 720 Hz. For the CPU
@@ -37,12 +37,9 @@ class Main:
 
                 if event.type == self.CPU_CLOCK:
 
-                    self.chip8.fetch_opcode()
-                    self.chip8.execute_opcode()
-                    
+                    self.chip8.execute_opcode(self.chip8.fetch_opcode())
 
                 self.clock.tick(MAX_CLOCK)
-                
-            
+                          
 main = Main()
 main.loop()
