@@ -1,4 +1,4 @@
-from src.chip8 import *
+from src.processor import *
 from src.display import *
 
 import pygame
@@ -8,7 +8,7 @@ class Main:
 
     def __init__(self) -> None:
         
-        self.chip8 = Chip8()
+        self.processor = Processor()
         self.display = Display()
 
         self.debug = False
@@ -30,14 +30,14 @@ class Main:
 
                 if event.type == self.EMU_CLOCK:
 
-                    self.chip8.key_pad.get_all_pressed()
-                    self.display.display_buffer(self.chip8.frame_buffer)
-                    self.chip8.refresh_timers()
+                    self.processor.key_pad.get_all_pressed()
+                    self.display.display_buffer(self.processor.frame_buffer)
+                    self.processor.refresh_timers()
                     self.display.update()
 
                 if event.type == self.CPU_CLOCK:
 
-                    self.chip8.execute_opcode(self.chip8.fetch_opcode())
+                    self.chip8.execute_opcode(self.processor.fetch_opcode())
 
                 self.clock.tick(MAX_CLOCK)
                           
