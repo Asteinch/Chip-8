@@ -4,7 +4,7 @@ pygame.mixer.init()
 from src.keypad import Keypad
 from constants import *
     
-class Chip8:
+class Processor:
 
     def __init__(self) -> None:
 
