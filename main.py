@@ -37,7 +37,7 @@ class Main:
 
                 if event.type == self.CPU_CLOCK:
 
-                    self.chip8.execute_opcode(self.processor.fetch_opcode())
+                    self.processor.execute_opcode(self.processor.fetch_opcode())
 
                 self.clock.tick(MAX_CLOCK)
                           
