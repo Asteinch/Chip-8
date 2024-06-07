@@ -1,5 +1,6 @@
-import pygame,time, random, math
-pygame.mixer.init()
+import pygame
+import random
+import math
 
 from src.keypad import Keypad
 from constants import *
@@ -22,7 +23,7 @@ class Processor:
 
         self.key_pad = Keypad()
         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
-        
+
         self.end_of_rom_data = 0xFFF
         self.font = FONT
 
@@ -30,7 +31,9 @@ class Processor:
     
     def load_essentials(self):
 
-        with open("roms/games/breakout.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        path = input("TYPE ROM PATH: ")
+
+        with open("roms/" + path, "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
@@ -364,4 +367,5 @@ class Processor:
             self.delay_timer -= 1
 
         if self.sound_timer > 0:
+
             self.sound_timer -= 1
