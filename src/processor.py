@@ -30,10 +30,7 @@ class Processor:
     
     def load_essentials(self):
 
-        path = input("Type rom path: ")
-        pygame.display.set_caption(path)
-
-        with open("roms/"+ path, "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        with open("roms/games/breakout.ch8", "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
             file_bytes = file.read()
 
             for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
@@ -54,6 +51,8 @@ class Processor:
 
         first_nibble = self.memory[self.PC] 
         second_nibble = self.memory[self.PC+0x1]
+
+        self.current_opcode = (first_nibble << 8) | second_nibble
 
         self.PC += 0x2
 
@@ -257,7 +256,7 @@ class Processor:
 
                                 self.V[0xF] = 1
                             
-                            self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] = not self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] 
+                            self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] = 1 if self.frame_buffer[(y_pos + y)%32][(x_pos+x)%64] == 0 else 0
 
             case 0xE000:
 
@@ -306,6 +305,8 @@ class Processor:
                                     if key == 1:
                                         key_been_pressed = True
                                         break
+
+                                
 
                         self.V[nib2] = i
 
