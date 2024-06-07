@@ -335,12 +335,12 @@ class Processor:
                     case 0x33:
                         # 0xFx33: split v[x] digits and adds them to memory starting from I. example: 126 -> 1, 2, 6
 
-                        number = self.V[nib2]
-                        string_of_number = str(number)
+                        string_of_number = str(self.V[nib2])
+                        skips = 3 - len(string_of_number)
 
-                        for i, digit in enumerate(string_of_number):
+                        for i in range(3):
 
-                            self.memory[self.I+i] = int(digit)
+                            self.memory[self.I+i] = 0 if i < skips else int(string_of_number[i - skips])
 
 
                     case 0x55:
