@@ -19,49 +19,41 @@ class Processor:
         self.delay_timer = 0x3C
         self.sound_timer = 0x3C
 
-        self.current_opcode = 0x0000
-
         self.key_pad = Keypad()
         self.frame_buffer = [[0x0] * 64 for _ in range(32)]
 
         self.end_of_rom_data = 0xFFF
         self.font = FONT
 
-        self.load_essentials()
     
-    def load_essentials(self):
+    def load_essentials(self, path):
 
-        path = input("TYPE ROM PATH: ")
-
-        with open("roms/" + path, "rb") as file:    # Loading the rom to memory from 0x200 -> 0xFFF
+        # Loads roms to memory
+        with open("roms/" + path, "rb") as file: 
             file_bytes = file.read()
 
-            for i, byte in enumerate(file_bytes, 0x200): # Inherits each byte in the rom and adds to memory
+            for i, byte in enumerate(file_bytes, 0x200): 
                 self.memory[i] = byte
             
             self.end_of_rom_data = i
 
-        #Loading the system Font
-        for i, byte in enumerate(self.font, 0x0): # Loading system Font to memory from 0x0 -> 0x200
+        # Loading the system Font
+        for i, byte in enumerate(self.font, 0x0):
 
             self.memory[i] = byte
         
-
     def fetch_opcode(self):
 
-        if self.PC > self.end_of_rom_data: # Resets program counter if it reached the end of rom
+        if self.PC > self.end_of_rom_data:
             self.PC = 0x200
 
         first_nibble = self.memory[self.PC] 
         second_nibble = self.memory[self.PC+0x1]
 
-        self.current_opcode = (first_nibble << 8) | second_nibble
-
         self.PC += 0x2
 
         return (first_nibble << 8) | second_nibble # Merges the two bytes to one
 
-    
     def execute_opcode(self, opcode):
 
 
@@ -338,13 +330,15 @@ class Processor:
                     case 0x33:
                         # 0xFx33: split v[x] digits and adds them to memory starting from I. example: 126 -> 1, 2, 6
 
-                        string_of_number = str(self.V[nib2])
-                        skips = 3 - len(string_of_number)
+                        num = self.V[nib2]
+
+                        digits = [num // 100, 
+                                  (num // 10) - (num // 100) * 10, 
+                                  num - ((num // 10)-(num // 100)*10) * 10 - (num // 100) * 100]
 
                         for i in range(3):
 
-                            self.memory[self.I+i] = 0 if i < skips else int(string_of_number[i - skips])
-
+                            self.memory[self.I+i] = digits[i]
 
                     case 0x55:
                         # 0xFx55: adds register v[0] -> v[x] to memory startng from adress I
@@ -359,13 +353,11 @@ class Processor:
                         for i in range(0, nib2 + 1):
 
                             self.V[i] = self.memory[self.I + i]
-
-                              
+                           
     def refresh_timers(self):
 
         if self.delay_timer > 0:
             self.delay_timer -= 1
 
         if self.sound_timer > 0:
-
             self.sound_timer -= 1
