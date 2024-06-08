@@ -7,8 +7,12 @@ from pygame.locals import *
 class Main:
 
     def __init__(self) -> None:
+
+        rom_path = input("Enter ROM path: ")
     
         self.processor = Processor()
+        self.processor.load_essentials(rom_path)
+
         self.display = Display()
 
         self.EMU_CLOCK = USEREVENT + 1 # 60 Hz. for the timers and display
@@ -18,6 +22,8 @@ class Main:
         pygame.time.set_timer(self.CPU_CLOCK, round((1/CPU_CLOCK_RATE)*1000))
 
         self.clock = pygame.time.Clock()
+
+        pygame.display.set_caption(rom_path)
 
     def loop(self):
 
@@ -35,7 +41,8 @@ class Main:
 
                 if event.type == self.CPU_CLOCK:
 
-                    self.processor.execute_opcode(self.processor.fetch_opcode())
+                    opcode = self.processor.fetch_opcode()
+                    self.processor.execute_opcode(opcode)
 
                 self.clock.tick(MAX_CLOCK)
 
