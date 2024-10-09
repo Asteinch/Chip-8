@@ -4,15 +4,16 @@ from src.display import *
 import pygame
 from pygame.locals import *
 
+import os
+
 class Main:
 
     def __init__(self) -> None:
 
-        rom_path = input("Enter ROM path: ")
+        while not (path := input("TYPE ROM PATH: ")).endswith(".ch8") or not os.path.exists("roms/" + path):
+            print("Invalid path!")
     
         self.processor = Processor()
-        self.processor.load_essentials(rom_path)
-
         self.display = Display()
 
         self.EMU_CLOCK = USEREVENT + 1 # 60 Hz. for the timers and display
@@ -23,7 +24,8 @@ class Main:
 
         self.clock = pygame.time.Clock()
 
-        pygame.display.set_caption(rom_path)
+        pygame.display.set_caption(path)
+        self.processor.load_essentials(path)
 
     def loop(self):
 
